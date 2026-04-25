@@ -16,46 +16,46 @@ import { Deal, EventStudyRecord } from '@/lib/types'
 export default function Page() {
   const [deals, setDeals] = useState<Deal[]>([])
   const [eventRows, setEventRows] = useState<EventStudyRecord[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadingDeals, setLoadingDeals] = useState(true)
+  const [loadingEvents, setLoadingEvents] = useState(true)
 
   useEffect(() => {
-    Promise.all([loadDeals(), loadEventStudy()])
-      .then(([parsedDeals, parsedEvents]) => {
+    loadDeals()
+      .then((parsedDeals) => {
         setDeals(parsedDeals)
+      })
+      .finally(() => {
+        setLoadingDeals(false)
+      })
+
+    loadEventStudy()
+      .then((parsedEvents) => {
         setEventRows(parsedEvents)
       })
       .finally(() => {
-        setLoading(false)
+        setLoadingEvents(false)
       })
   }, [])
-
-  if (loading) {
-    return (
-      <div className="p-8 space-y-4">
-        <Skeleton className="h-12 w-1/2" />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    )
-  }
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Header dealsCount={deals.length} />
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-        <KpiCards deals={deals} />
-        <MonthlyChart deals={deals} />
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <TopStocksChart deals={deals} />
-          <TopClientsChart deals={deals} />
-        </div>
-        <StockInsights events={eventRows} />
-        <DealsTable deals={deals} />
+        {loadingDeals ? <Skeleton className="h-32 w-full" /> : <KpiCards deals={deals} />}
+        {loadingDeals ? <Skeleton className="h-72 w-full" /> : <MonthlyChart deals={deals} />}
+        {loadingDeals ? (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Skeleton className="h-[380px] w-full" />
+            <Skeleton className="h-[380px] w-full" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <TopStocksChart deals={deals} />
+            <TopClientsChart deals={deals} />
+          </div>
+        )}
+        {loadingEvents ? <Skeleton className="h-[540px] w-full" /> : <StockInsights events={eventRows} />}
+        {loadingDeals ? <Skeleton className="h-[620px] w-full" /> : <DealsTable deals={deals} />}
       </div>
     </main>
   )

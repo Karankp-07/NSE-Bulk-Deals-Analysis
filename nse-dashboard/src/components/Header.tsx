@@ -10,25 +10,36 @@ interface HeaderProps {
 }
 
 export default function Header({ dealsCount }: HeaderProps) {
-  const [dark, setDark] = useState(false)
+  const [dark, setDark] = useState(true)
 
   useEffect(() => {
     const saved = window.localStorage.getItem('nse-dashboard-theme')
+    const root = document.documentElement
+
     if (saved === 'dark') {
+      root.classList.add('dark')
       setDark(true)
       return
     }
+
     if (saved === 'light') {
+      root.classList.remove('dark')
       setDark(false)
       return
     }
-    setDark(window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+    root.classList.add('dark')
+    setDark(true)
+    window.localStorage.setItem('nse-dashboard-theme', 'dark')
   }, [])
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark)
-    window.localStorage.setItem('nse-dashboard-theme', dark ? 'dark' : 'light')
-  }, [dark])
+  function toggleTheme() {
+    const root = document.documentElement
+    const nextDark = !root.classList.contains('dark')
+    root.classList.toggle('dark', nextDark)
+    setDark(nextDark)
+    window.localStorage.setItem('nse-dashboard-theme', nextDark ? 'dark' : 'light')
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/85 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
@@ -44,7 +55,7 @@ export default function Header({ dealsCount }: HeaderProps) {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setDark((prev) => !prev)}>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
           {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
       </div>
