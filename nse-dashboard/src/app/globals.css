@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-sans: var(--font-manrope);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-manrope), sans-serif;
+}
