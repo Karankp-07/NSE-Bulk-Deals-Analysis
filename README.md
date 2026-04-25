@@ -21,6 +21,9 @@ See the full interactive analytics app here:
 
 https://nse-bulk-deals-analysis.vercel.app/
 
+<img width="1886" height="1054" alt="image" src="https://github.com/user-attachments/assets/3161544a-0be7-4bf8-b154-e4c5ec8fff96" />
+
+
 ## Verified Current Folder Structure
 
 Below is the structure currently present in this repository (checked against the actual workspace):
