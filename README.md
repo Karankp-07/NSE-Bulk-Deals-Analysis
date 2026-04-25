@@ -11,6 +11,16 @@ The project has two parts:
 
 If institutions do large BUY/SELL bulk deals, can we use that information to estimate short-term future returns?
 
+## Live Dashboard
+
+Experience the project in action:
+
+### NSE Bulk Deals Signal Dashboard
+
+See the full interactive analytics app here:
+
+https://nse-bulk-deals-analysis.vercel.app/
+
 ## Verified Current Folder Structure
 
 Below is the structure currently present in this repository (checked against the actual workspace):
