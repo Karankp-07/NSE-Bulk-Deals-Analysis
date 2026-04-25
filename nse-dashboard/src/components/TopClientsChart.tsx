@@ -26,20 +26,26 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   return null
 }
 
+function compactLabel(name: string) {
+  const normalized = name.replace(/\s+/g, ' ').trim()
+  return normalized.length > 20 ? `${normalized.slice(0, 20)}...` : normalized
+}
+
 export default function TopClientsChart({ deals }: Props) {
   const data = useMemo(() => {
     const map = new Map<string, number>()
     deals
       .filter((d) => d.buySell === 'BUY')
       .forEach((d) => {
-        map.set(d.clientName, (map.get(d.clientName) ?? 0) + 1)
+        const normalized = d.clientName.replace(/\s+/g, ' ').trim()
+        map.set(normalized, (map.get(normalized) ?? 0) + 1)
       })
 
     return [...map.entries()]
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([client, count]) => ({
-        client: client.length > 22 ? `${client.slice(0, 22)}...` : client,
+        client: compactLabel(client),
         fullName: client,
         count,
       }))
@@ -52,10 +58,10 @@ export default function TopClientsChart({ deals }: Props) {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={340}>
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 24, left: 54, bottom: 0 }}>
+          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 24, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#cbd5e1" />
             <XAxis type="number" tick={{ fontSize: 11 }} domain={[0, 'dataMax + 40']} />
-            <YAxis type="category" dataKey="client" tick={{ fontSize: 10 }} width={96} />
+            <YAxis type="category" dataKey="client" tick={{ fontSize: 11 }} width={126} tickMargin={6} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="count" name="Deals" fill="#10b981" radius={[0, 4, 4, 0]} />
           </BarChart>

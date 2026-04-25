@@ -28,8 +28,9 @@ const PAGE_SIZE = 20
 
 export default function DealsTable({ deals }: Props) {
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL')
-  const [symbolFilter, setSymbolFilter] = useState('ALL')
+  const [quickFilter, setQuickFilter] = useState('ALL')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [quickFilterOpen, setQuickFilterOpen] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [currentPage, setCurrentPage] = useState(1)
@@ -39,9 +40,69 @@ export default function DealsTable({ deals }: Props) {
     deals.forEach((d) => map.set(d.symbol, (map.get(d.symbol) ?? 0) + 1))
     return [...map.entries()]
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 50)
+      .slice(0, 100)
       .map(([symbol]) => symbol)
   }, [deals])
+
+  const searchSymbols = useMemo(() => {
+    const map = new Map<string, number>()
+    deals.forEach((d) => map.set(d.symbol, (map.get(d.symbol) ?? 0) + 1))
+    return [...map.entries()]
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 150)
+      .map(([symbol]) => symbol)
+  }, [deals])
+
+  const quickFilterOptions = useMemo(() => ['ALL', 'TYPE: BUY', 'TYPE: SELL', ...topSymbols], [topSymbols])
+
+  const searchSuggestions = useMemo(() => {
+    const q = search.trim().toUpperCase()
+    if (!q) return searchSymbols
+
+    return searchSymbols
+      .filter((symbol) => symbol.includes(q))
+      .sort((a, b) => {
+        const aStarts = a.startsWith(q)
+        const bStarts = b.startsWith(q)
+        if (aStarts !== bStarts) return aStarts ? -1 : 1
+        return a.localeCompare(b)
+      })
+  }, [search, searchSymbols])
+
+  const quickFilterSuggestions = useMemo(() => {
+    const q = quickFilter.trim().toUpperCase()
+    const source = quickFilterOptions
+    if (!q || q === 'ALL') return source
+
+    return source
+      .filter((option) => option.includes(q))
+      .sort((a, b) => {
+        const aStarts = a.startsWith(q)
+        const bStarts = b.startsWith(q)
+        if (aStarts !== bStarts) return aStarts ? -1 : 1
+        return a.localeCompare(b)
+      })
+  }, [quickFilter, quickFilterOptions])
+
+  const parsedQuickFilter = useMemo(() => {
+    const raw = quickFilter.trim().toUpperCase()
+    if (!raw || raw === 'ALL') {
+      return { type: 'ALL' as 'ALL' | 'BUY' | 'SELL', symbolQuery: '' }
+    }
+
+    if (raw === 'BUY' || raw === 'SELL') {
+      return { type: raw as 'BUY' | 'SELL', symbolQuery: '' }
+    }
+
+    if (raw.startsWith('TYPE: ')) {
+      const candidate = raw.replace('TYPE: ', '').trim()
+      if (candidate === 'BUY' || candidate === 'SELL') {
+        return { type: candidate as 'BUY' | 'SELL', symbolQuery: '' }
+      }
+    }
+
+    return { type: 'ALL' as 'ALL' | 'BUY' | 'SELL', symbolQuery: raw }
+  }, [quickFilter])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -51,11 +112,11 @@ export default function DealsTable({ deals }: Props) {
         d.symbol.toLowerCase().includes(q) ||
         d.securityName.toLowerCase().includes(q) ||
         d.clientName.toLowerCase().includes(q)
-      const typePass = typeFilter === 'ALL' || d.buySell === typeFilter
-      const symbolPass = symbolFilter === 'ALL' || d.symbol === symbolFilter
+      const typePass = parsedQuickFilter.type === 'ALL' || d.buySell === parsedQuickFilter.type
+      const symbolPass = !parsedQuickFilter.symbolQuery || d.symbol.includes(parsedQuickFilter.symbolQuery)
       return textPass && typePass && symbolPass
     })
-  }, [deals, search, typeFilter, symbolFilter])
+  }, [deals, search, parsedQuickFilter])
 
   const sorted = useMemo(() => {
     const arr = [...filtered]
@@ -104,38 +165,64 @@ export default function DealsTable({ deals }: Props) {
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
               value={search}
-              onChange={(e) => updateAndResetPage(setSearch, e.target.value)}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
+              onChange={(e) => {
+                setSearchOpen(true)
+                updateAndResetPage(setSearch, e.target.value)
+              }}
               className="pl-9"
               placeholder="Search Symbol, Company, Client"
             />
+            {searchOpen && searchSuggestions.length > 0 ? (
+              <div className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                {searchSuggestions.map((symbol) => (
+                  <button
+                    key={symbol}
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onMouseDown={() => {
+                      updateAndResetPage(setSearch, symbol)
+                      setSearchOpen(false)
+                    }}
+                  >
+                    {symbol}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
-          <select
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
-            value={typeFilter}
-            onChange={(e) => updateAndResetPage(setTypeFilter, e.target.value as 'ALL' | 'BUY' | 'SELL')}
-          >
-            <option value="ALL">All Types</option>
-            <option value="BUY">BUY</option>
-            <option value="SELL">SELL</option>
-          </select>
-
-          <div>
+          <div className="relative">
             <Input
-              list="symbol-list"
-              placeholder="Filter Symbol (top 50, searchable)"
-              value={symbolFilter === 'ALL' ? '' : symbolFilter}
+              onFocus={() => setQuickFilterOpen(true)}
+              onBlur={() => setTimeout(() => setQuickFilterOpen(false), 120)}
+              placeholder="Quick Filter: TYPE: BUY, TYPE: SELL, or symbol"
+              value={quickFilter === 'ALL' ? '' : quickFilter}
               onChange={(e) => {
                 const value = e.target.value.trim().toUpperCase()
-                if (!value) updateAndResetPage(setSymbolFilter, 'ALL')
-                else updateAndResetPage(setSymbolFilter, value)
+                setQuickFilterOpen(true)
+                if (!value) updateAndResetPage(setQuickFilter, 'ALL')
+                else updateAndResetPage(setQuickFilter, value)
               }}
             />
-            <datalist id="symbol-list">
-              {topSymbols.map((symbol) => (
-                <option key={symbol} value={symbol} />
-              ))}
-            </datalist>
+            {quickFilterOpen && quickFilterSuggestions.length > 0 ? (
+              <div className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                {quickFilterSuggestions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onMouseDown={() => {
+                      updateAndResetPage(setQuickFilter, option)
+                      setQuickFilterOpen(false)
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 

@@ -29,6 +29,18 @@ export default function StockInsights({ events }: Props) {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSymbol, setSelectedSymbol] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  function handleSearchChange(value: string) {
+    setSearchTerm(value)
+    const next = value.trim().toUpperCase()
+    if (!next) return
+
+    const exact = symbols.find((s) => s === next)
+    if (exact) {
+      setSelectedSymbol(exact)
+    }
+  }
 
   const filteredSymbols = useMemo(() => {
     const q = searchTerm.trim().toUpperCase()
@@ -79,35 +91,66 @@ export default function StockInsights({ events }: Props) {
   )
 
   const trendStroke = prediction.r30 >= 0 ? '#16a34a' : '#e11d48'
+  const trendCardTone =
+    prediction.r30 >= 0
+      ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-900/70 dark:from-emerald-950/40 dark:to-slate-950'
+      : 'border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-900/70 dark:from-rose-950/40 dark:to-slate-950'
+
+  const trendPanelTone =
+    prediction.r30 >= 0
+      ? 'border-emerald-200/80 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-950/20'
+      : 'border-rose-200/80 bg-rose-50/60 dark:border-rose-900/60 dark:bg-rose-950/20'
 
   return (
-    <Card>
+    <Card className={trendCardTone}>
       <CardHeader>
         <CardTitle className="text-base font-semibold">Stock Return Prediction & History</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search stock symbol (e.g. APOLLO, GUJALKALI)"
-            className="lg:col-span-2"
-          />
-          <select
-            value={selectedSymbol}
-            onChange={(e) => setSelectedSymbol(e.target.value)}
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 lg:col-span-2"
-            disabled={filteredSymbols.length === 0}
-          >
-            {filteredSymbols.length === 0 ? (
-              <option value="">No matching stocks</option>
+          <div className="relative lg:col-span-2">
+            <Input
+              value={searchTerm}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
+              onChange={(e) => {
+                setSearchOpen(true)
+                handleSearchChange(e.target.value)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && filteredSymbols.length) {
+                  const next = filteredSymbols[0]
+                  setSelectedSymbol(next)
+                  setSearchTerm(next)
+                  setSearchOpen(false)
+                }
+              }}
+              placeholder="Search stock symbol (e.g. APOLLO, GUJALKALI)"
+              className="lg:col-span-2"
+            />
+            {searchOpen && filteredSymbols.length > 0 ? (
+              <div className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                {filteredSymbols.map((symbol) => (
+                  <button
+                    key={symbol}
+                    type="button"
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onMouseDown={() => {
+                      setSelectedSymbol(symbol)
+                      setSearchTerm(symbol)
+                      setSearchOpen(false)
+                    }}
+                  >
+                    <span className="font-medium">{symbol}</span>
+                    <span className="text-xs text-slate-500">{symbolCounts.get(symbol) ?? 0}</span>
+                  </button>
+                ))}
+              </div>
             ) : null}
-            {filteredSymbols.map((symbol) => (
-              <option key={symbol} value={symbol}>
-                {symbol} ({symbolCounts.get(symbol) ?? 0})
-              </option>
-            ))}
-          </select>
+          </div>
+          <div className="flex h-10 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 lg:col-span-2">
+            Selected Stock: <span className="ml-1 font-semibold">{selectedSymbol || 'None'}</span>
+          </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/60">
             Samples: <span className="font-semibold">{selectedRows.length}</span>
           </div>
@@ -139,8 +182,8 @@ export default function StockInsights({ events }: Props) {
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-sm font-medium text-slate-600 dark:text-slate-300">Historical 30D Return Trend (Latest 120 events)</p>
+        <div className={`rounded-md border p-3 ${trendPanelTone}`}>
+          <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Historical 30D Return Trend (Latest 120 events)</p>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={history} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
